@@ -33,7 +33,9 @@ Supplier payments require a connected Testnet wallet and the supplier's public T
 - **Send XRP worldwide:** enter a public XRPL Testnet address or select a previously linked email. Review the destination, fee, reserve and policy checks, then approve the transfer. Test XRP has no cash value and this app cannot send Mainnet XRP.
 - **Bank payouts and card refunds:** these require Paystack credentials and verified funds. They are separate from Testnet XRP transfers.
 
-Card sample data and profit allocations are simulations. Incoming and outgoing XRP payments are read from validated XRPL Testnet account history and refresh about every 15 seconds while the app is open. A Testnet deposit request is marked validated when the requested amount arrives at the shop address and, if entered, from the expected sender address. Testnet balances and transfers are not real money.
+Card sample data and profit allocations are simulations. Incoming and outgoing XRP payments are read from validated XRPL Testnet account history and refresh about every 5 seconds while the app is open. A Testnet deposit request is marked validated when the requested amount arrives at the shop address and, if entered, from the expected sender address. A request alone does not create a deposit: send XRP to the shop wallet from a different Testnet wallet. Testnet balances and transfers are not real money.
+
+The wallet panel also includes an **x402 endpoint check**. It probes a public HTTPS URL without paying and checks whether its HTTP 402 challenge offers exact XRP on XRPL Testnet (`xrpl:1`). A passing challenge-format check does not verify the service operator or guarantee the service is safe; review every payment independently.
 
 ## Shop analytics and inventory
 
