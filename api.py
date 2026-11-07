@@ -5,6 +5,10 @@ import json
 import logging
 import secrets
 import re
+import base64
+import ipaddress
+import socket
+from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Any
 
@@ -189,6 +193,11 @@ def wallet_activity_feed() -> dict:
         raise HTTPException(502, f"XRPL Testnet activity could not be refreshed: {exc}") from exc
 
 
+@app.post("/api/x402/oracle-check", dependencies=[Depends(require_api_key)])
+def x402_oracle_check_route(body: X402OracleRequest) -> dict:
+    return x402_oracle_check(body)
+
+
 @app.get("/api/rates")
 def rates(refresh: bool = Query(default=False)) -> dict:
     return get_rate(force_refresh=refresh)
@@ -272,6 +281,94 @@ class WalletWithdrawalRequest(BaseModel):
 class CardDepositRequest(BaseModel):
     amount_zar: float = Field(gt=0, le=100_000)
     email: str = Field(min_length=5, max_length=254)
+
+
+class X402OracleRequest(BaseModel):
+    url: str = Field(min_length=9, max_length=2048)
+
+
+def _public_https_url(url: str) -> tuple[str, str]:
+    parsed = urlsplit(url)
+    try:
+        port = parsed.port
+    except ValueError:
+        raise HTTPException(400, "Enter a valid public HTTPS endpoint on port 443.")
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or port not in (None, 443):
+        raise HTTPException(400, "Enter a public HTTPS x402 endpoint (port 443).")
+    host = parsed.hostname.rstrip(".").lower()
+    if host in {"localhost", "localhost.localdomain"} or host.endswith((".localhost", ".local", ".internal")):
+        raise HTTPException(400, "Private and local endpoints cannot be checked.")
+    try:
+        addresses = {ipaddress.ip_address(result[4][0]) for result in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)}
+    except (OSError, ValueError):
+        raise HTTPException(400, "The endpoint hostname could not be resolved.")
+    if not addresses or any(not address.is_global for address in addresses):
+        raise HTTPException(400, "The endpoint must resolve only to public internet addresses.")
+    return host, url
+
+
+def _x402_requirements(response: httpx.Response, payload: bytes) -> dict | None:
+    raw = response.headers.get("PAYMENT-REQUIRED") or response.headers.get("X-PAYMENT-REQUIRED")
+    if raw:
+        try:
+            raw += "=" * (-len(raw) % 4)
+            parsed = json.loads(base64.b64decode(raw, validate=True))
+            if isinstance(parsed, dict):
+                return parsed
+        except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
+            return None
+    try:
+        body = json.loads(payload)
+        return body if isinstance(body, dict) and ("accepts" in body or "paymentRequirements" in body) else None
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+
+@app.post("/api/x402/oracle-check", dependencies=[Depends(require_api_key)])
+def x402_oracle_check(body: X402OracleRequest) -> dict:
+    """Unpaid HTTPS probe: inspect a public endpoint for an XRPL Testnet x402 challenge."""
+    host, url = _public_https_url(body.url.strip())
+    try:
+        with httpx.Client(timeout=httpx.Timeout(8.0), follow_redirects=False, headers={"Accept": "application/json"}) as client:
+            with client.stream("GET", url) as response:
+                payload = bytearray()
+                for chunk in response.iter_bytes(chunk_size=8192):
+                    payload.extend(chunk)
+                    if len(payload) > 65536:
+                        payload = payload[:65536]
+                        break
+                status = response.status_code
+                challenge = _x402_requirements(response, bytes(payload))
+    except httpx.HTTPError:
+        raise HTTPException(502, "Could not reach that endpoint over HTTPS. No payment was attempted.")
+    if status != 402 or not challenge:
+        return {"ok": False, "verdict": "No valid x402 challenge found", "endpoint": host,
+                "http_status": status, "checks": ["Unpaid HTTPS request completed", "No payment was sent"],
+                "message": "This endpoint did not return an HTTP 402 response with readable payment requirements."}
+    accepts = challenge.get("accepts", [])
+    requirements = challenge.get("paymentRequirements")
+    if isinstance(requirements, dict):
+        accepts = [requirements]
+    elif not isinstance(accepts, list):
+        accepts = []
+    xrpl = next((item for item in accepts if isinstance(item, dict) and item.get("network") == "xrpl:1"
+                 and item.get("scheme") == "exact" and item.get("asset") == "XRP"), None)
+    if not xrpl:
+        return {"ok": False, "verdict": "x402 found · no XRPL Testnet XRP option", "endpoint": host,
+                "http_status": status, "checks": ["HTTP 402 challenge found", "No payment was sent"],
+                "message": "The endpoint advertises x402, but not exact XRP on XRPL Testnet (xrpl:1)."}
+    amount, pay_to = xrpl.get("amount"), xrpl.get("payTo")
+    valid_amount = isinstance(amount, str) and amount.isdigit() and int(amount) > 0
+    valid_address = isinstance(pay_to, str) and bool(re.fullmatch(r"r[1-9A-HJ-NP-Za-km-z]{24,34}", pay_to))
+    ok = valid_amount and valid_address
+    return {"ok": ok, "verdict": "XRPL Testnet x402 challenge looks valid" if ok else "XRPL Testnet challenge needs review",
+            "endpoint": host, "http_status": status,
+            "checks": ["HTTP 402 challenge found", "Network: xrpl:1", "Asset: XRP",
+                       "Amount uses positive integer drops" if valid_amount else "Amount is missing or invalid",
+                       "Public destination address is present" if valid_address else "Destination address is missing or invalid",
+                       "No payment was sent"],
+            "payment": {"network": "xrpl:1", "asset": "XRP", "amount_drops": amount if valid_amount else None,
+                        "pay_to": pay_to if valid_address else None}}
 
 
 class PaystackWithdrawalRequest(BaseModel):
