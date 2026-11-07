@@ -654,7 +654,7 @@ function openPaymentModal(supplierName) {
           button.textContent = "Submitting…";
           const result = await apiRequest("/payments", { method: "POST", body: JSON.stringify({ supplier, amount, intent_id: intentId, approved: true }) });
           if (result.state) state = { ...initialState, ...result.state };
-          persistRender(); closeModal();
+          persistRender(); closeModal(); await refreshWalletActivity();
           showToast(result.status === "validated" ? "Testnet payment validated" : "Payment submitted · pending", result.message || "The saved transaction will be reconciled. Do not retry it.");
         }
       } catch (error) {
