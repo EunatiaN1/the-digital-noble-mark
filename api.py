@@ -172,6 +172,7 @@ def health() -> dict:
             wallet = wallet_status()
         except Exception as exc:
             wallet = {"configured": bool(settings.seed), "connected": False, "address": None, "error": str(exc)[:400]}
+        wallet["pending_outgoing_xrp"] = pending_spend_xrp() if wallet.get("configured") else 0.0
     return {
         "ok": True, "storage": "sqlite", "mode": "demo" if settings.demo_mode else "testnet" if wallet.get("configured") else "testnet-setup",
         "network": "demo" if settings.demo_mode else "testnet", "wallet": wallet, "api_key_configured": bool(settings.api_key),
