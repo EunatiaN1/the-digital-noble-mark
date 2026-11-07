@@ -193,11 +193,6 @@ def wallet_activity_feed() -> dict:
         raise HTTPException(502, f"XRPL Testnet activity could not be refreshed: {exc}") from exc
 
 
-@app.post("/api/x402/oracle-check", dependencies=[Depends(require_api_key)])
-def x402_oracle_check_route(body: X402OracleRequest) -> dict:
-    return x402_oracle_check(body)
-
-
 @app.get("/api/rates")
 def rates(refresh: bool = Query(default=False)) -> dict:
     return get_rate(force_refresh=refresh)
