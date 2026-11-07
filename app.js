@@ -680,7 +680,7 @@ function openWalletSetupModal() {
     return;
   }
   if (!apiOnline || !API_KEY) { showToast("Start the local service", "Open the app with ./start_app.sh to manage the XRPL Testnet wallet.", true); return; }
-  openModal({ kicker: "XRPL TESTNET ONLY", title: configured ? "Test wallet" : "Set up a test wallet", copy: configured ? `A Testnet-only wallet${walletInfo.connected ? " is connected" : " is saved on this computer but not currently reachable"}.${walletInfo.error ? ` Connection detail: ${walletInfo.error}` : ""} Its secret is never shown in the browser.` : "Create a fresh Testnet-only wallet on this computer, then request test XRP from XRPL’s official faucet. Test funds have no real-world value.", submit: configured ? "Top up with Test XRP" : "Create & fund test wallet", fields: configured ? `<div class="form-field"><label>Public address</label><input id="wallet-public-address" value="${escapeHTML(walletInfo.address || "")}" readonly /></div><p class="form-hint">Balance: ${Number(walletInfo.balance_xrp || 0).toFixed(6)} XRP · network: XRPL Testnet${walletInfo.connected ? " · Connected" : " · Offline"}</p><div class="wallet-action-row"><button type="button" class="button button-secondary" id="wallet-receive-open">Receive XRP</button><button type="button" class="button button-secondary" id="wallet-refresh">Refresh balance</button></div><p class="form-hint">Faucet requests are limited to one per address every 24 hours.</p><button type="button" class="button button-secondary" id="wallet-withdraw-open">Withdraw XRP to another wallet</button>` : `<div class="policy-result"><strong>Only for testing</strong><p>A new key is generated locally, stored in a private .env file, and funded through the official Testnet faucet.</p></div>`, onSubmit: async () => {
+  openModal({ kicker: "XRPL TESTNET ONLY", title: configured ? "Test wallet" : "Set up a test wallet", copy: configured ? `A Testnet-only wallet${walletInfo.connected ? " is connected" : " is saved on this computer but not currently reachable"}.${walletInfo.error ? ` Connection detail: ${walletInfo.error}` : ""} Its secret is never shown in the browser.` : "Create a fresh Testnet-only wallet on this computer, then request test XRP from XRPL’s official faucet. Test funds have no real-world value.", submit: configured ? "Top up with Test XRP" : "Create & fund test wallet", fields: configured ? `<div class="form-field"><label>Public address</label><input id="wallet-public-address" value="${escapeHTML(walletInfo.address || "")}" readonly /></div><p class="form-hint">Balance: ${Number(walletInfo.balance_xrp || 0).toFixed(6)} XRP · network: XRPL Testnet${walletInfo.connected ? " · Connected" : " · Offline"}</p><div class="wallet-action-row"><button type="button" class="button button-secondary" id="wallet-receive-open">Receive XRP</button><button type="button" class="button button-secondary" id="wallet-refresh">Refresh balance</button></div><p class="form-hint">Faucet requests are limited to one per address every 24 hours.</p><button type="button" class="button button-secondary" id="wallet-withdraw-open">Withdraw XRP to another wallet</button><button type="button" class="button button-secondary" id="x402-oracle-open">Check an x402 endpoint</button>` : `<div class="policy-result"><strong>Only for testing</strong><p>A new key is generated locally, stored in a private .env file, and funded through the official Testnet faucet.</p></div><button type="button" class="button button-secondary" id="x402-oracle-open">Check an x402 endpoint</button>`, onSubmit: async () => {
     const button = $("#modal-submit"); button.disabled = true; button.textContent = "Requesting Test XRP…";
     try {
       const result = await apiRequest(configured ? "/faucet/fund" : "/wallet/bootstrap", { method: "POST", body: "{}" });
@@ -700,7 +700,20 @@ function openReceiveXrpModal() {
     return;
   }
   if (!walletInfo.address) { showToast("No wallet address yet", "Create a Testnet wallet first.", true); return; }
-  openModal({ kicker: "XRPL TESTNET · RECEIVE", title: "Receive XRP", copy: "Send Test XRP from another XRPL Testnet wallet to this public address. Deposits are not available on Mainnet through this app.", submit: "Done", fields: `<div class="form-field"><label>Shop wallet address</label><input id="receive-address" value="${escapeHTML(walletInfo.address)}" readonly /></div><div class="wallet-action-row"><button type="button" class="button button-secondary" id="copy-receive-address">Copy address</button><button type="button" class="button button-secondary" id="wallet-refresh">Refresh balance</button></div><p class="form-hint">The wallet balance and validated transfers refresh about every 15 seconds while this dashboard is open.</p>`, onSubmit: closeModal });
+  openModal({ kicker: "XRPL TESTNET · RECEIVE", title: "Receive XRP", copy: "Send Test XRP from another XRPL Testnet wallet to this public address. Deposits are not available on Mainnet through this app.", submit: "Done", fields: `<div class="form-field"><label>Shop wallet address</label><input id="receive-address" value="${escapeHTML(walletInfo.address)}" readonly /></div><div class="wallet-action-row"><button type="button" class="button button-secondary" id="copy-receive-address">Copy address</button><button type="button" class="button button-secondary" id="wallet-refresh">Refresh balance</button></div><p class="form-hint">Validated transfers and wallet balance refresh about every 5 seconds while this dashboard is open. A request only tracks an incoming transfer; it does not create XRP.</p>`, onSubmit: closeModal });
+}
+function openX402OracleModal() {
+  openModal({ kicker: "X402 · XRPL TESTNET ORACLE CHECK", title: "Check a payment endpoint", copy: "We make one unpaid HTTPS request and inspect its HTTP 402 challenge. This checks whether the endpoint advertises a valid exact XRP payment on XRPL Testnet. No payment is signed or sent.", submit: "Run unpaid check", fields: `<div class="form-field"><label for="x402-endpoint-url">Public HTTPS endpoint</label><input id="x402-endpoint-url" type="url" placeholder="https://service.example/api/resource" autocomplete="url" required /></div><div id="x402-oracle-result" aria-live="polite"></div><p class="form-hint">The check will not follow redirects, submit payment, or accept private/local endpoints. A passing result is only a challenge-format check; it does not prove an endpoint is trustworthy.</p>`, onSubmit: async (root) => {
+    const url = $("#x402-endpoint-url", root).value.trim(); const button = $("#modal-submit");
+    if (!/^https:\/\//i.test(url)) { $("#modal-error").textContent = "Enter a public HTTPS address."; return; }
+    button.disabled = true; button.textContent = "Checking without payment…";
+    try {
+      const result = await apiRequest("/x402/oracle-check", { method: "POST", body: JSON.stringify({ url }) });
+      $("#x402-oracle-result", root).innerHTML = `<div class="policy-result ${result.ok ? "allowed" : ""}"><strong>${escapeHTML(result.verdict)}</strong><p>${escapeHTML(result.message || "")}</p>${(result.checks || []).map((check) => `<p>• ${escapeHTML(check)}</p>`).join("")}${result.payment ? `<p>Destination: ${escapeHTML(result.payment.pay_to || "—")} · ${escapeHTML(String(result.payment.amount_drops || "—"))} drops of XRP (xrpl:1).</p>` : ""}</div>`;
+      button.textContent = "Check another endpoint";
+    } catch (error) { $("#modal-error").textContent = error.message; button.textContent = "Run unpaid check"; }
+    finally { button.disabled = false; }
+  }});
 }
 async function refreshWalletStatus() {
   if (walletInfo.simulated) { updateWalletStatusUI(); updateLinkedAccountSummary(); showToast("Demo wallet is ready", `Simulated balance: ${Number(walletInfo.balance_xrp || 0).toFixed(6)} XRP.`); return; }
@@ -725,10 +738,13 @@ async function refreshWalletActivity() {
       const existing = known.get(entry.txHash);
       if (existing) { if (existing.status !== entry.status) changed = true; Object.assign(existing, entry); continue; }
       known.set(entry.txHash, entry); fresh.push(entry); changed = true;
-      if (Number(entry.xrpAmount) > 0) {
-        const request = (state.transactions || []).find((tx) => tx.type === "Payment request" && tx.status === "Awaiting Testnet confirmation" && Number(tx.requestedXrp) > 0 && Math.abs(Number(tx.requestedXrp) - Number(entry.xrpAmount)) < 0.000001 && tx.destinationAddress === entry.destination && (!tx.expectedSourceAddress || tx.expectedSourceAddress === entry.source));
-        if (request) { request.status = "Validated · Testnet"; request.txHash = entry.txHash; request.detail = `${request.detail} · received and validated`; }
-      }
+    }
+    // Reconcile requests against the full validated activity feed, even if the
+    // matching transfer was already present before the request was created.
+    for (const entry of feed.activity || []) {
+      if (Number(entry.xrpAmount) <= 0) continue;
+      const request = (state.transactions || []).find((tx) => tx.type === "Payment request" && tx.status === "Awaiting Testnet confirmation" && Number(tx.requestedXrp) > 0 && Math.abs(Number(tx.requestedXrp) - Number(entry.xrpAmount)) < 0.000001 && tx.destinationAddress === entry.destination && (!tx.expectedSourceAddress || tx.expectedSourceAddress === entry.source));
+      if (request) { request.status = "Validated · Testnet"; request.txHash = entry.txHash; request.detail = `${request.detail} · received and validated`; changed = true; }
     }
     if (fresh.length) state.transactions = [...fresh, ...(state.transactions || [])].slice(0, 2000);
     if (changed) {
@@ -789,7 +805,7 @@ function openWalletWithdrawalModal() {
         if (recipientEmail) { const tx = state.transactions.find((entry) => entry.intentId === intentId); if (tx) tx.detail = `${tx.detail} · wallet-linked email ${recipientEmail}`; }
         try { walletInfo = (await apiRequest("/health")).wallet || walletInfo; } catch {}
         $("#demo-tag").textContent = `${Number(walletInfo.balance_xrp || 0).toFixed(2)} XRP`;
-        persistRender(); closeModal();
+        persistRender(); closeModal(); await refreshWalletActivity();
         showToast(result.status === "validated" ? "Withdrawal validated" : "Withdrawal pending", result.message || "Check the transaction status before trying again.");
       }
     } catch (error) { $("#modal-error").textContent = error.message; if (error.message.includes("changed")) review.innerHTML = ""; button.textContent = review.dataset.ready ? "Approve & withdraw XRP" : "Check withdrawal"; }
@@ -993,6 +1009,7 @@ document.addEventListener("click", (event) => {
   }
   if (event.target.closest("#owner-profile")) { openOwnerProfileModal(); return; }
   if (event.target.closest("#wallet-setup")) { openWalletSetupModal(); return; }
+  if (event.target.closest("#x402-oracle-open")) { openX402OracleModal(); return; }
   if (event.target.closest("#wallet-withdraw-open")) { openWalletWithdrawalModal(); return; }
   if (event.target.closest("#wallet-receive-open")) { openReceiveXrpModal(); return; }
   if (event.target.closest("#wallet-refresh")) { refreshWalletStatus(); return; }
@@ -1039,4 +1056,4 @@ new MutationObserver(() => translatePage()).observe(document.body, { childList: 
 updateStats(); renderDashboard();
 connectLocalService();
 setInterval(() => refreshExchangeRates(false), 90000);
-setInterval(() => refreshWalletActivity(), 15000);
+setInterval(() => refreshWalletActivity(), 5000);
