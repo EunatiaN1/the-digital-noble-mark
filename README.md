@@ -14,7 +14,7 @@ python3 -m venv .venv
 ./start_app.sh
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The first start initializes a local API key and SQLite database. Keep `.env` and the database on your computer; both are excluded from Git.
+Run `./start_app.sh`, then download and open the [interactive HTML preview](./preview.html) in a browser. It embeds the app running on this computer and can use the local API and XRPL Testnet wallet. If your service uses a different port, change the preview's **Local app address** field (the default `start_app.sh` port is `8000`). The preview does not host the backend. Card checkout is still a no-charge demo; XRP actions use Testnet and require your review in the app. The first start initializes a local API key and SQLite database. Keep `.env` and the database on your computer; both are excluded from Git.
 
 ## Set up an XRPL Testnet wallet
 
