@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#141714" />
+  <title>The Digital Noble Mark · Interactive local preview</title>
+  <style>
+    :root { color-scheme:dark; --ink:#f7f8f5; --muted:#a6afa9; --orange:#f0842b; --panel:#202420; --line:#343a35; }
+    * { box-sizing:border-box; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    body { margin:0; min-height:100vh; background:#141714; color:var(--ink); font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    header { display:flex; align-items:center; gap:16px; padding:17px clamp(16px,4vw,52px); border-bottom:1px solid var(--line); background:#191d19; }
+    .mark { display:flex; align-items:center; gap:11px; margin-right:auto; font-weight:750; letter-spacing:-.035em; }
+    .logo { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--orange); color:#1b1d19; font-weight:900; }
+    .badge { padding:6px 10px; border:1px solid #57422f; border-radius:999px; color:#ffc18d; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    main { width:min(1600px,100%); margin:auto; padding:20px clamp(12px,2vw,28px) 26px; }
+    .toolbar { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .toolbar p { margin:0 auto 0 0; color:var(--muted); font-size:12px; }
+    button,input { min-height:38px; padding:0 14px; border:1px solid #4a504b; border-radius:9px; background:var(--panel); color:var(--ink); font:inherit; }
+    button { font-weight:650; cursor:pointer; }
+    input { width:min(260px,100%); }
+    button.primary { border-color:var(--orange); background:var(--orange); color:#21180f; }
+    button:focus-visible,input:focus-visible { outline:2px solid #ffb16d; outline-offset:2px; }
+    .frame-wrap { overflow:hidden; min-height:74vh; border:1px solid var(--line); border-radius:14px; background:#f5f5f2; }
+    iframe { display:block; width:100%; height:calc(100vh - 150px); min-height:620px; border:0; background:#f5f5f2; }
+    .note { display:flex; gap:10px; margin:13px 2px 0; color:var(--muted); font-size:11px; }
+    .note strong { color:#ffc18d; }
+    @media(max-width:640px) { header { flex-wrap:wrap; } .badge { font-size:9px; } .toolbar { flex-wrap:wrap; } .toolbar p { flex-basis:100%; } iframe { height:calc(100vh - 190px); min-height:600px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="mark"><span class="logo">DN</span><span>The Digital Noble Mark</span></div>
+    <span class="badge">Local interactive preview</span>
+    <span class="badge">XRPL Testnet only</span>
+  </header>
+  <main>
+    <div class="toolbar">
+      <p>This preview loads the shop app from the local service running on this computer.</p>
+      <label class="sr-only" for="app-address">Local app address</label>
+      <input id="app-address" type="url" value="http://127.0.0.1:8765/" aria-label="Local app address" />
+      <button id="load-preview" type="button">Load address</button>
+      <button id="reload-preview" type="button">Reload app</button>
+      <button id="open-app" class="primary" type="button">Open app in new tab</button>
+    </div>
+    <div class="frame-wrap"><iframe id="app-preview" title="The Digital Noble Mark shop app preview" src="http://127.0.0.1:8765/"></iframe></div>
+    <p id="preview-status" class="note" aria-live="polite"></p>
+    <p class="note"><strong>Payment safety:</strong><span>Wallet controls use the local app and XRPL Testnet. Review every transfer in the app. Card checkout remains a demo and does not charge a card. This preview file does not add a payment processor or expose wallet secrets.</span></p>
+  </main>
+  <script>
+    const frame = document.querySelector('#app-preview');
+    const address = document.querySelector('#app-address');
+    const status = document.querySelector('#preview-status');
+    document.querySelector('#load-preview').addEventListener('click', () => {
+      try {
+        const target = new URL(address.value);
+        if (target.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(target.hostname)) throw new Error('Use the local app address on this computer, such as http://127.0.0.1:8000/.');
+        frame.src = target.origin + '/';
+        status.textContent = 'Loading the local app. If it does not appear, start the app service first and check its port.';
+      } catch (error) { status.textContent = error.message || 'Enter a valid local app address.'; }
+    });
+    document.querySelector('#reload-preview').addEventListener('click', () => { frame.src = frame.src; });
+    document.querySelector('#open-app').addEventListener('click', () => window.open(frame.src, '_blank', 'noopener'));
+  </script>
+</body>
+</html>
