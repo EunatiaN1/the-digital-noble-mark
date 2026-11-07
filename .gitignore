@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+spaza.sqlite3
+spaza.sqlite3-shm
+spaza.sqlite3-wal
+.venv/
+.env
+.env.local
+*.db
+*.sqlite
+.pytest_cache/
+.coverage
+.DS_Store
+node_modules/
+dist/

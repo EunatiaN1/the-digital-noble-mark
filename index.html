@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7f4" />
+    <meta name="description" content="A smarter way to run your neighbourhood shop." />
+    <title>Spaza — Shop dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./features.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="#dashboard" aria-label="Spaza home">
+          <span class="brand-mark"><svg viewBox="0 0 28 28" fill="none"><path d="M5 11.5h18l-1.6 12H6.6L5 11.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11.5V8a5 5 0 0 1 10 0v3.5M10 16v4m4-4v4m4-4v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          <span class="brand-name">spaza<span class="brand-dot">.</span><small>SHOPKEEPER</small></span>
+        </a>
+        <div class="shop-switcher"><span class="shop-avatar">DM</span><span class="shop-name" id="shop-name">The Digital Mark Spaza Shop<small>Johannesburg, GP</small></span><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></div>
+        <div class="nav-label">WORKSPACE</div>
+        <nav class="main-nav" aria-label="Main navigation">
+          <button class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></span>Overview</button>
+          <button class="nav-item" data-page="inventory"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m4 7 8-4 8 4v10l-8 4-8-4V7Z"/><path d="m4 7 8 4 8-4M12 11v10M8 5l8 4"/></svg></span>Inventory<span class="nav-badge" id="inventory-badge">2</span></button>
+          <button class="nav-item" data-page="transactions"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2.5"/></svg></span>Transactions</button>
+          <button class="nav-item" data-page="suppliers"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 20V7l9-4 9 4v13h-6v-6H9v6H3Z"/><path d="M8 9h.01M12 9h.01M16 9h.01"/></svg></span>Suppliers</button>
+        </nav>
+        <div class="nav-label nav-label-spaced">MANAGEMENT</div>
+        <nav class="main-nav" aria-label="Management navigation">
+          <button class="nav-item" data-page="policy"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>Spending policy</button>
+        </nav>
+        <div class="sidebar-spacer"></div>
+        <div class="help-card"><div class="help-icon">✳</div><strong>Here for your hustle.</strong><p>Need a hand with your shop?</p><button id="help-button">Visit help centre <span>↗</span></button></div>
+        <button class="profile-row" id="owner-profile" type="button" aria-label="Edit shop owner profile"><span class="profile-avatar">EN</span><span class="profile-name" id="profile-name">Eunatia Ngobeni<small>Shop owner</small></span><span class="profile-more">···</span></button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <button class="mobile-menu" id="mobile-menu" aria-label="Open menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <div class="breadcrumbs"><span>Workspace</span><span class="crumb-divider">/</span><strong id="breadcrumb-current">Overview</strong></div>
+          <div class="topbar-actions">
+            <button type="button" class="network-pill" id="wallet-setup" aria-label="XRPL Testnet wallet"><span class="network-dot"></span><span id="network-label">Testnet setup</span><span class="demo-tag" id="demo-tag">WALLET NEEDED</span></button>
+            <label class="language-picker"><span class="visually-hidden">Language</span><select id="language-select" aria-label="Language" title="Language"><option value="en">English</option><option value="zu">isiZulu</option><option value="xh">isiXhosa</option><option value="af">Afrikaans</option><option value="st">Sesotho</option><option value="sw">Kiswahili</option><option value="ha">Hausa</option><option value="yo">Yorùbá</option><option value="fr">Français</option><option value="pt">Português</option></select></label>
+            <button class="icon-button" id="notifications-button" aria-label="Notifications" aria-expanded="false" aria-controls="notification-panel"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notification-count" id="notification-count">0</span></button>
+            <section class="notification-panel" id="notification-panel" aria-label="Notifications" hidden><div class="notification-heading"><div><strong>Notifications</strong><span id="notification-summary">Shop updates</span></div><button id="mark-notifications-read">Mark all read</button></div><div class="notification-list" id="notification-list"></div></section>
+            <span class="topbar-avatar">EN</span>
+          </div>
+        </header>
+
+        <div class="page-wrap">
+          <section class="welcome-row">
+            <div><div class="eyebrow"><span class="eyebrow-line"></span> <span id="today-label">SATURDAY, 7 NOVEMBER 2026</span></div><h1 id="page-title">Good morning, Eunatia <span class="wave">✳</span></h1><p class="page-subtitle" id="page-subtitle">Here’s what’s happening at your shop today.</p></div>
+            <button class="button button-primary" id="open-sale"><span class="button-plus">＋</span> Ring up a sale</button>
+          </section>
+
+          <section class="account-toolbar"><div class="account-funds"><div class="account-ident"><span class="account-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-5 5h2"/></svg></span><div><span class="account-label">DEMO STORE LEDGER · ZAR</span><strong id="store-balance">R 6,450.00</strong><small class="account-subtext" id="store-settlement-balance">Sample shop balance · not a bank account</small></div></div><div class="account-ident xrpl-account-ident"><span class="xrpl-account-icon">X</span><div><span class="account-label">XRPL TESTNET WALLET</span><strong id="linked-wallet-balance">Wallet setup needed</strong><small class="account-subtext" id="linked-wallet-value">Create a Testnet wallet to get your address</small></div></div></div><div class="account-actions"><button class="button button-secondary" data-money="deposit"><span>↓</span> Deposit</button><button class="button button-secondary" data-money="withdraw"><span>↑</span> Withdraw</button></div></section>
+          <section class="fx-card" aria-label="XRP exchange rate"><div class="fx-card-heading"><div><span class="account-label">LIVE MARKET ESTIMATE · DEMO ONLY</span><h2>XRP exchange rate</h2><p>Indicative XRP spot price converted to a selected local currency</p></div><div class="fx-actions"><button class="button button-secondary fx-refresh" id="refresh-rates" type="button">Refresh</button><button class="button button-primary fx-refresh" id="invest-profit" type="button">Invest profit in XRP</button></div></div><div class="fx-rate-line"><strong id="fx-rate-value">Loading live rates…</strong><label class="fx-amount-wrap"><span>XRP amount</span><input id="fx-amount" type="number" min="0.000001" step="any" value="1" aria-label="XRP amount to convert" /></label><select id="fx-currency" aria-label="Choose local currency"><option value="zar">South African rand (ZAR)</option><option value="ngn">Nigerian naira (NGN)</option><option value="kes">Kenyan shilling (KES)</option><option value="ghs">Ghanaian cedi (GHS)</option><option value="egp">Egyptian pound (EGP)</option><option value="ugx">Ugandan shilling (UGX)</option><option value="tzs">Tanzanian shilling (TZS)</option><option value="zmw">Zambian kwacha (ZMW)</option><option value="bwp">Botswana pula (BWP)</option><option value="nad">Namibian dollar (NAD)</option><option value="lsl">Lesotho loti (LSL)</option><option value="szl">Eswatini lilangeni (SZL)</option><option value="xof">West African CFA franc (XOF)</option><option value="xaf">Central African CFA franc (XAF)</option></select></div><div class="fx-card-foot"><span id="fx-rate-status">Fetching current market price…</span><span>Estimate only · XRP spot: <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a> / <a href="https://coinpaprika.com/" target="_blank" rel="noopener noreferrer">CoinPaprika</a> · fiat reference: <a href="https://www.exchangerate-api.com/" target="_blank" rel="noopener noreferrer">ExchangeRate-API</a></span></div><div class="investment-summary" id="investment-summary">No profit allocated to XRP yet.</div></section>
+
+          <section class="notice-bar"><span class="notice-shield"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span><div><strong>Testnet safety checks are active</strong><span>Approved supplier payments use XRPL Testnet after owner review. Card checkout uses test data only.</span></div><button class="text-link" data-go="policy">View policy <span>→</span></button></section>
+
+          <section class="stats-grid" aria-label="Shop performance">
+            <article class="stat-card"><div class="stat-top"><span class="stat-label" id="cash-in-label">SALES · PAST WEEK <span class="info-dot" title="Recorded sales in the selected period">i</span></span><span class="stat-icon icon-green"><svg viewBox="0 0 24 24"><path d="M4 17 9 12l3 3 8-8M14 7h6v6"/></svg></span></div><div class="stat-value" id="cash-in">R 0<span class="stat-cents">.00</span></div><div class="stat-foot"><span class="trend-up">LIVE</span><span>selected period</span></div><div class="sparkline spark-green"><svg viewBox="0 0 120 32" preserveAspectRatio="none"><path d="M1 27 C12 24 14 20 23 23 S37 24 45 17 S57 24 65 15 S78 20 86 11 S100 16 108 7 S116 11 120 3"/></svg></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label" id="cash-out-label">SUPPLIER SPEND · PAST WEEK <span class="info-dot" title="Recorded supplier payments in the selected period">i</span></span><span class="stat-icon icon-orange"><svg viewBox="0 0 24 24"><path d="M4 7 9 12l3-3 8 8M14 17h6v-6"/></svg></span></div><div class="stat-value" id="cash-out">R 0<span class="stat-cents">.00</span></div><div class="stat-foot"><span class="trend-neutral">LIVE</span><span>selected period</span></div><div class="sparkline spark-orange"><svg viewBox="0 0 120 32" preserveAspectRatio="none"><path d="M1 5 C11 8 14 17 22 12 S34 19 44 15 S56 23 66 17 S79 26 87 20 S99 24 109 21 S116 28 120 25"/></svg></div></article>
+            <article class="stat-card"><div class="stat-top"><span class="stat-label" id="profit-label">NET PROFIT · PAST WEEK <span class="info-dot" title="Sales minus supplier payments recorded in the selected period">i</span></span><span class="stat-icon icon-blue"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h17M7 15l4-5 3 3 6-7"/></svg></span></div><div class="stat-value" id="net-profit">R 0<span class="stat-cents">.00</span></div><div class="stat-foot"><span class="trend-up">LIVE</span><span>sales less supplier spend</span></div><div class="sparkline spark-blue"><svg viewBox="0 0 120 32" preserveAspectRatio="none"><path d="M1 28 C12 23 16 22 24 25 S37 14 46 18 S57 11 67 15 S79 7 87 12 S99 6 108 8 S116 4 120 2"/></svg></div></article>
+            <article class="stat-card budget-card"><div class="stat-top"><span class="stat-label">AGENT SPENDING BUDGET <span class="info-dot" title="Local policy budget for approved supplier payments">i</span></span><span class="stat-icon icon-purple"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-5 5h2"/></svg></span></div><div class="stat-value"><span id="budget-value">100.00</span><span class="budget-unit"> XRP</span></div><div class="budget-meter"><span id="budget-meter-fill"></span></div><div class="stat-foot"><span id="budget-used">0 XRP used</span><span>of <span id="budget-total">100</span> XRP</span></div></article>
+          </section>
+
+          <section class="content-grid">
+            <article class="panel sales-panel"><div class="panel-heading"><div><h2>Sales &amp; profit</h2><p>Based on recorded shop activity</p></div><div class="select-wrap"><select id="chart-period" aria-label="Sales period"><option value="7">Past week</option><option value="30">Past month</option><option value="90">Past 3 months</option></select><svg viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg></div></div>
+              <div class="chart-summary"><div><span class="muted-label">SALES IN PERIOD</span><div class="chart-total" id="chart-total">R 0.00</div></div><div class="chart-legend"><span><i class="legend-dot sales-dot"></i>Sales</span><span><i class="legend-dot profit-dot"></i>Profit</span></div></div>
+              <div class="chart-area"><div class="chart-y-labels" id="chart-y-labels"><span>R 0</span><span>R 0</span><span>R 0</span><span>R 0</span><span>R 0</span></div><div class="chart-plot"><div class="chart-gridlines"><i></i><i></i><i></i><i></i><i></i></div><svg viewBox="0 0 680 190" preserveAspectRatio="none" class="sales-chart"><defs><linearGradient id="sales-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f58220" stop-opacity=".22"/><stop offset="1" stop-color="#f58220" stop-opacity="0"/></linearGradient></defs><path class="chart-fill" id="sales-fill-path" d=""/><path class="chart-line chart-line-sales" id="sales-line-path" d=""/><path class="chart-line chart-line-profit" id="profit-line-path" d=""/></svg><div class="chart-x-labels" id="chart-x-labels"></div></div></div>
+            </article>
+
+            <article class="panel inventory-panel"><div class="panel-heading"><div><h2>Stock to watch</h2><p>Stay ahead of low and expiring items</p></div><button class="icon-button panel-menu" aria-label="More inventory options">···</button></div><div class="watch-list" id="watch-list"></div><button class="panel-footer-link" data-go="inventory">View all inventory <span>→</span></button></article>
+          </section>
+
+          <section class="panel activity-panel"><div class="panel-heading"><div><h2>Recent activity</h2><p>Your shop’s latest moves</p></div><button class="panel-footer-link heading-link" data-go="transactions">All transactions <span>→</span></button></div><div class="table-scroll"><table class="activity-table"><thead><tr><th>ACTIVITY</th><th>TYPE</th><th>TIME</th><th>AMOUNT</th><th>STATUS</th></tr></thead><tbody id="activity-body"></tbody></table></div></section>
+
+          <section class="bottom-grid"><article class="tip-card"><div class="tip-art"><span>✳</span><i></i><b></b></div><div><div class="tip-eyebrow">A LITTLE SHOP SMARTS</div><h3>Less waste, more profit.</h3><p>Items expiring within 5 days get a 50% markdown suggestion. Expired stock is kept off the till.</p></div><button class="tip-arrow" data-go="inventory" aria-label="View inventory">→</button></article><article class="scenario-card"><div class="scenario-top"><div><div class="tip-eyebrow">POLICY DEMO</div><h3>Put your protection to the test</h3><p>See how Spaza stops a risky payment before it can happen.</p></div><span class="scenario-shield"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span></div><button class="button button-dark" id="run-rogue">Simulate rogue AI attempt <span>→</span></button></article></section>
+          <footer class="page-footer"><span>Made for the heartbeat of your neighbourhood. <b>♡</b></span><span>DEMO DATA · <button id="reset-demo">Reset demo</button></span></footer>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+    <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="modal-close" id="modal-close" aria-label="Close dialog">×</button><div class="modal-kicker" id="modal-kicker">QUICK ACTION</div><h2 id="modal-title"></h2><p id="modal-copy"></p><div id="modal-fields"></div><div id="modal-error" class="form-error" role="alert"></div><div class="modal-actions"><button class="button button-secondary" id="modal-cancel">Cancel</button><button class="button button-primary" id="modal-submit"></button></div></section></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
