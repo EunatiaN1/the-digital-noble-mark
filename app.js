@@ -417,13 +417,14 @@ async function fetchDirectLiveRates() {
 }
 function updateLinkedAccountSummary() {
   const balance = Number(walletInfo.balance_xrp || 0);
+  const pendingOut = Math.max(0, Number(walletInfo.pending_outgoing_xrp || 0));
   const balanceNode = $("#linked-wallet-balance"); const valueNode = $("#linked-wallet-value");
   if (!balanceNode || !valueNode) return;
   if (!walletInfo.configured) { balanceNode.textContent = "Connect a Testnet wallet"; valueNode.textContent = "XRP deposits are Testnet only"; return; }
   if (!walletInfo.connected) { balanceNode.textContent = "Wallet offline"; valueNode.textContent = "Reconnect to refresh the Testnet balance"; return; }
-  balanceNode.textContent = `${balance.toFixed(6)} XRP`;
+  balanceNode.textContent = pendingOut > 0 ? `${Math.max(0, balance - pendingOut).toFixed(6)} XRP available` : `${balance.toFixed(6)} XRP`;
   const rate = exchangeRates?.rates?.zar;
-  valueNode.textContent = rate ? `Demo estimate ${zar(balance * rate)} · no cash value` : "Demo XRP · live quote unavailable";
+  valueNode.textContent = pendingOut > 0 ? `${balance.toFixed(6)} XRP confirmed · ${pendingOut.toFixed(6)} pending send` : rate ? `Demo estimate ${zar(balance * rate)} · no cash value` : "Demo XRP · live quote unavailable";
 }
 async function handlePaystackReturn() {
   const url = new URL(window.location.href); const reference = url.searchParams.get("paystack_reference");
