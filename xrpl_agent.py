@@ -243,7 +243,7 @@ def submit_x402_payment(endpoint: str, destination: str, amount_xrp: float) -> d
     )
     expected_drops = str(xrp_to_drops(amount_xrp))
     try:
-        response = session.get(endpoint, timeout=90)
+        response = session.get(endpoint, timeout=90, allow_redirects=False)
     except Exception as exc:
         # x402 may have submitted before a network interruption; never retry blindly.
         return {"status": "settlement_unknown", "validated": False, "network": "testnet",
@@ -252,10 +252,10 @@ def submit_x402_payment(endpoint: str, destination: str, amount_xrp: float) -> d
 
     receipt_header = response.headers.get("PAYMENT-RESPONSE")
     if not receipt_header:
-        return {"status": "failed", "validated": False, "network": "testnet",
+        return {"status": "settlement_unknown", "validated": False, "network": "testnet",
                 "destination": destination, "amount_xrp": round(amount_xrp, 6),
                 "resource_status": response.status_code,
-                "message": "The service did not return an x402 settlement receipt. No completed payment was confirmed."}
+                "message": "The service response had no settlement receipt. A payment may have been submitted; check wallet activity and do not retry blindly."}
     try:
         receipt = decode_payment_response(receipt_header)
     except Exception as exc:
