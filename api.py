@@ -726,6 +726,8 @@ def payment_preview(body: PaymentRequest) -> dict:
         raise HTTPException(502, f"Testnet preflight could not complete: {exc}") from exc
     preview["supplier"] = supplier["name"]
     preview["daily_limit_xrp"] = settings.daily_cap_xrp
+    if body.x402_endpoint:
+        preview["x402_fee_limit_xrp"] = settings.max_fee_xrp
     return preview
 
 
