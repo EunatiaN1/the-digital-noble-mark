@@ -6,7 +6,7 @@ A local shop management app with point of sale, inventory, supplier management, 
 
 ## Run locally
 
-Requirements: Python 3.10 or newer.
+Requirements: Python 3.11 or newer.
 
 ```sh
 python3 -m venv .venv
@@ -35,7 +35,7 @@ Supplier payments require a connected Testnet wallet and the supplier's public T
 
 Card sample data and profit allocations are simulations. Incoming and outgoing XRP payments are read from validated XRPL Testnet account history and refresh about every 5 seconds while the app is open. A Testnet deposit request is marked validated when the requested amount arrives at the shop address and, if entered, from the expected sender address. A request alone does not create a deposit: send XRP to the shop wallet from a different Testnet wallet. Testnet balances and transfers are not real money.
 
-The supplier editor can save both a public wallet address and an optional **x402 service URL**. On the x402 route, the app checks the URL's HTTP 402 challenge without paying, requires its exact XRP amount and recipient to match the entered payment and saved supplier address, then runs the normal XRPL Testnet preflight and owner confirmation. The app finally submits a standard XRPL Testnet transfer to that address; it does not complete x402 facilitator settlement or retry the service request with an x402 payment proof. A passing challenge-format check does not verify the service operator or guarantee the service is safe; review every payment independently.
+The supplier editor can save both a public wallet address and an optional **x402 service URL**. On the x402 route, the app checks the URL's HTTP 402 challenge without paying and requires its exact XRP amount and recipient to match the supplier and amount you entered. After owner confirmation, the XRPL x402 client signs the exact Testnet payment, gets a facilitator receipt, and retries the protected service request with that receipt. The app then independently checks the transaction hash against validated XRPL Testnet ledger data before marking the supplier payment complete. It is configured for xrpl:1 only and caps the network fee. If the resource request or receipt is interrupted after payment, the app records an unknown or pending outcome and warns you not to retry blindly. A passing challenge-format check does not verify the service operator or guarantee the service is safe; review every payment independently.
 
 ## Shop analytics and inventory
 
