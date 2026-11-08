@@ -28,7 +28,7 @@ from intent import make_intent
 from policy import evaluate_spend, pending_spend_xrp
 from preflight import PreflightError
 from reconcile import sweep
-from xrpl_agent import create_and_fund_wallet, get_wallet, prepare_payment, sign_persist_submit, wallet_activity, wallet_status
+from xrpl_agent import create_and_fund_wallet, get_wallet, prepare_payment, sign_persist_submit, submit_x402_payment, wallet_activity, wallet_status
 
 log = logging.getLogger("spaza.api")
 app = FastAPI(title="The Digital Mark Spaza Shop", version="2.0.0")
@@ -748,7 +748,39 @@ def send_payment(body: PaymentRequest) -> dict:
         stored, supplier, destination, intent = _payment_inputs(body.supplier, body.amount, body.intent_id, True, body.x402_endpoint)
         try:
             filled, preview = prepare_payment(destination, body.amount, intent)
-            result = sign_persist_submit(filled, intent, supplier["name"], body.amount)
+            if body.x402_endpoint:
+                # Reserve this intent before calling a remote facilitator. A timeout
+                # can happen after submission, so the same intent must never pay twice.
+                initial = {
+                    "intent_id": body.intent_id, "supplier": supplier["name"],
+                    "amount_xrp": body.amount, "status": "settlement_unknown",
+                    "network": "testnet", "workflow": "x402_supplier_payment",
+                    "destination": destination, "validated": False,
+                    "message": "x402 settlement is being checked. Do not retry this intent.",
+                }
+                with connection() as db:
+                    db.execute(
+                        """INSERT INTO payment_intents(intent_id,supplier,destination,amount_xrp,status,
+                            last_ledger_sequence,payload,created_at,updated_at)
+                            VALUES(?,?,?,?,?,?,?,?,?)""",
+                        (body.intent_id, supplier["name"], destination, body.amount, "settlement_unknown",
+                         None, json.dumps(initial, ensure_ascii=False), now_iso(), now_iso()),
+                    )
+                try:
+                    result = submit_x402_payment(body.x402_endpoint, destination, body.amount)
+                except ImportError as exc:
+                    result = {"status": "failed", "validated": False, "network": "testnet",
+                              "destination": destination, "amount_xrp": body.amount,
+                              "message": f"Install the x402 XRPL client before using this route: {exc.name}."}
+                except Exception as exc:
+                    log.exception("x402 settlement outcome is uncertain; intent is locked against retry")
+                    result = {"status": "settlement_unknown", "validated": False, "network": "testnet",
+                              "destination": destination, "amount_xrp": body.amount,
+                              "message": f"x402 could not confirm the result. Check the wallet activity before retrying. ({type(exc).__name__})"}
+                result.update({"intent_id": body.intent_id, "supplier": supplier["name"],
+                               "workflow": "x402_supplier_payment", "memo": None})
+            else:
+                result = sign_persist_submit(filled, intent, supplier["name"], body.amount)
         except PreflightError as exc:
             raise HTTPException(422, {"message": str(exc), "checks": exc.result.checks, "reasons": exc.result.reasons}) from exc
         except Exception as exc:
@@ -759,8 +791,22 @@ def send_payment(body: PaymentRequest) -> dict:
         with connection() as db:
             db.execute("UPDATE payment_intents SET payload=?,updated_at=? WHERE intent_id=?",
                        (json.dumps(result, ensure_ascii=False), now_iso(), body.intent_id))
-            db.execute("UPDATE ledger_transactions SET payload=?,updated_at=? WHERE intent_id=?",
-                       (json.dumps(result, ensure_ascii=False), now_iso(), body.intent_id))
+            if result.get("tx_hash"):
+                db.execute("UPDATE payment_intents SET tx_hash=?,last_ledger_sequence=? WHERE intent_id=?",
+                           (result["tx_hash"], result.get("last_ledger_sequence"), body.intent_id))
+                db.execute(
+                    """INSERT INTO ledger_transactions(tx_hash,intent_id,supplier,amount_xrp,status,
+                        engine_result,ledger_index,payload,created_at,updated_at)
+                        VALUES(?,?,?,?,?,?,?,?,?,?)
+                        ON CONFLICT(tx_hash) DO UPDATE SET status=excluded.status,
+                        engine_result=excluded.engine_result,ledger_index=excluded.ledger_index,
+                        payload=excluded.payload,updated_at=excluded.updated_at""",
+                    (result["tx_hash"], body.intent_id, supplier["name"], body.amount,
+                     result["status"], result.get("engine_result"), result.get("ledger_index"),
+                     json.dumps(result, ensure_ascii=False), now_iso(), now_iso()),
+                )
+                db.execute("UPDATE ledger_transactions SET payload=?,updated_at=? WHERE intent_id=?",
+                           (json.dumps(result, ensure_ascii=False), now_iso(), body.intent_id))
             if result["status"] == "validated":
                 current = read_app_state(db) or stored
                 _apply_validated_payment(result, current["state"])
