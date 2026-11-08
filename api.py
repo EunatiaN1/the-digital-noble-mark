@@ -265,6 +265,7 @@ class PaymentRequest(BaseModel):
     amount: float = Field(gt=0, le=100_000)
     intent_id: str = Field(min_length=8, max_length=100)
     approved: bool = False
+    x402_endpoint: str | None = Field(default=None, min_length=9, max_length=2048)
 
 
 class WalletWithdrawalRequest(BaseModel):
@@ -683,7 +684,8 @@ def wallet_withdraw(body: WalletWithdrawalRequest) -> dict:
     return result
 
 
-def _payment_inputs(supplier_name: str, amount: float, intent_id: str, approved: bool):
+def _payment_inputs(supplier_name: str, amount: float, intent_id: str, approved: bool,
+                    x402_endpoint: str | None = None):
     stored = _stored()
     if not stored:
         raise HTTPException(409, "Save shop data before preparing a payment.")
@@ -696,6 +698,16 @@ def _payment_inputs(supplier_name: str, amount: float, intent_id: str, approved:
     destination = str(supplier.get("xrplAddress", "")).strip()
     if not destination:
         raise HTTPException(422, f"{supplier_name} needs a funded XRPL Testnet address before it can receive a payment.")
+    if x402_endpoint:
+        quote = x402_oracle_check(X402OracleRequest(url=x402_endpoint))
+        if not quote.get("ok"):
+            raise HTTPException(422, quote.get("message", "The x402 check did not pass."))
+        terms = quote.get("payment") or {}
+        expected_drops = int(round(amount * 1_000_000))
+        if terms.get("pay_to") != destination:
+            raise HTTPException(422, "The x402 quote recipient does not match this supplier's saved Testnet address.")
+        if terms.get("amount_drops") != str(expected_drops):
+            raise HTTPException(422, "The x402 quote amount does not match the XRP amount entered. Review the quote and amount again.")
     intent = make_intent(supplier=supplier_name, intent_id=intent_id, owner_approved=approved)
     return stored, supplier, destination, intent
 
@@ -705,7 +717,7 @@ def payment_preview(body: PaymentRequest) -> dict:
     require_live_mode()
     if not wallet_status().get("connected"):
         raise HTTPException(409, "Set up and fund the shop wallet on XRPL Testnet first.")
-    _, supplier, destination, intent = _payment_inputs(body.supplier, body.amount, body.intent_id, False)
+    _, supplier, destination, intent = _payment_inputs(body.supplier, body.amount, body.intent_id, False, body.x402_endpoint)
     try:
         _, preview = prepare_payment(destination, body.amount, intent)
     except PreflightError as exc:
@@ -733,7 +745,7 @@ def send_payment(body: PaymentRequest) -> dict:
             return result
         if not wallet_status().get("connected"):
             raise HTTPException(409, "The shop wallet is not connected to XRPL Testnet.")
-        stored, supplier, destination, intent = _payment_inputs(body.supplier, body.amount, body.intent_id, True)
+        stored, supplier, destination, intent = _payment_inputs(body.supplier, body.amount, body.intent_id, True, body.x402_endpoint)
         try:
             filled, preview = prepare_payment(destination, body.amount, intent)
             result = sign_persist_submit(filled, intent, supplier["name"], body.amount)
