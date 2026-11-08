@@ -19,7 +19,7 @@ def pending_spend_xrp() -> float:
     with connection() as db:
         row = db.execute(
             "SELECT COALESCE(SUM(amount_xrp), 0) AS total FROM payment_intents "
-            "WHERE status IN ('prepared', 'pending', 'submitted_not_validated', 'not_found')"
+            "WHERE status IN ('prepared', 'pending', 'submitted_not_validated', 'not_found', 'settlement_unknown')"
         ).fetchone()
     return float(row["total"])
 
