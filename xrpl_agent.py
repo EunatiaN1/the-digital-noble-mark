@@ -5,11 +5,12 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import time
 
 from xrpl.clients import JsonRpcClient
 from xrpl.core.binarycodec import encode
-from xrpl.models.requests import AccountTx, SubmitOnly, Tx
+from xrpl.models.requests import AccountTx, ServerInfo, SubmitOnly, Tx
 from xrpl.models.transactions import Memo, Payment
 from xrpl.transaction import autofill, sign
 from xrpl.utils import drops_to_xrp, xrp_to_drops
@@ -82,6 +83,28 @@ def wallet_status() -> dict:
         return {"configured": True, "network": "testnet", "connected": True, "balance_xrp": round(balance, 6), "address": wallet.address}
     except Exception as exc:
         return {"configured": True, "network": "testnet", "connected": False, "balance_xrp": None, "address": wallet.address if wallet else None, "error": str(exc)[:400]}
+
+
+def xrpl_node_status() -> dict:
+    """Read status from the configured XRPL Testnet server; this app is not a validator."""
+    response = client.request(ServerInfo())
+    if hasattr(response, "is_successful") and not response.is_successful():
+        raise RuntimeError("XRPL Testnet node did not return server information.")
+    result = response.result
+    info = result.get("info") or {}
+    ledger = info.get("validated_ledger") or {}
+    return {
+        "network": "testnet",
+        "node_role": "public XRPL Testnet RPC server",
+        "app_runs_validator": False,
+        "server_state": info.get("server_state", "unknown"),
+        "network_id": info.get("network_id"),
+        "validated_ledger_sequence": ledger.get("seq"),
+        "validated_ledger_age_seconds": ledger.get("age"),
+        "validation_quorum": info.get("validation_quorum"),
+        "peer_count": info.get("peers"),
+        "build_version": info.get("build_version"),
+    }
 
 
 def wallet_activity(limit: int = 30) -> list[dict]:
