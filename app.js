@@ -180,6 +180,7 @@ const localizedText = Object.fromEntries([
   ["Check payment", "Hlola inkokhelo", "Jonga intlawulo", "Kontroleer betaling", "Hlahloba tefo"],
   ["Wallet address", "Ikheli lesikhwama", "Idilesi ye-wallet", "Beursieadres", "Aterese ea wallet"],
   ["Optional · not added", "Ongakukhetha · akufakiwe", "Ungayikhetha · ayongezwanga", "Opsioneel · nie bygevoeg nie", "Ha ho hlokahale · ha ea kenngoa"],
+  ["Add wallet address", "Faka ikheli lesikhwama", "Yongeza idilesi ye-wallet", "Voeg beursieadres by", "Kenya aterese ea wallet"],\n  ["XRPL Testnet preflight passed", "Ukuhlola kwangaphambi kokuthumela kwe-XRPL Testnet kuphumelele", "Ukuhlolwa kwe-XRPL Testnet kuphumelele", "XRPL Testnet-voorafkontrole geslaag", "Tlhahlobo ea pele ea XRPL Testnet e atlehile"],\n  ["I checked the supplier, method and amount, and approve this Testnet payment.", "Ngihlole umhlinzeki, indlela nenani, futhi ngiyavuma le nkokhelo ye-Testnet.", "Ndijonge umboneleli, indlela nesixa, kwaye ndiyavuma le ntlawulo ye-Testnet.", "Ek het die verskaffer, metode en bedrag nagegaan en keur hierdie Testnet-betaling goed.", "Ke hlahlobile mofani, mokhoa le chelete, ’me ke amohela tefo ena ea Testnet."],\n  ["I checked the supplier and amount, and approve this demo payment.", "Ngihlole umhlinzeki nenani, futhi ngiyavuma le nkokhelo yokuzama.", "Ndijonge umboneleli nesixa, kwaye ndiyavuma le ntlawulo yovavanyo.", "Ek het die verskaffer en bedrag nagegaan en keur hierdie demo-betaling goed.", "Ke hlahlobile mofani le chelete, ’me ke amohela tefo ena ea teko."],
 ].map(([en, zu, xh, af, st]) => [en, { zu, xh, af, st }]));
 const extendedTranslations = {
   "Overview": { sw: "Muhtasari", ha: "Bayani", yo: "Akopọ", fr: "Aperçu", pt: "Visão geral" },
@@ -232,6 +233,11 @@ Object.assign(extendedTranslations, {
   "Check payment": { sw: "Kagua malipo", ha: "Duba biyan kuɗi", yo: "Ṣàyẹ̀wò ìsanwó", fr: "Vérifier le paiement", pt: "Verificar pagamento" },
   "Wallet address": { sw: "Anwani ya pochi", ha: "Adireshin walat", yo: "Àdírẹ́sì àpamọ́", fr: "Adresse du portefeuille", pt: "Endereço da carteira" },
   "Optional · not added": { sw: "Si lazima · haijaongezwa", ha: "Na zaɓi · ba a ƙara ba", yo: "Kò pọn dandan · a kò fi kún un", fr: "Facultatif · non renseigné", pt: "Opcional · não adicionado" },
+  "Add wallet address": { sw: "Ongeza anwani ya pochi", ha: "Ƙara adireshin walat", yo: "Fi àdírẹ́sì àpamọ́ kún un", fr: "Ajouter une adresse de portefeuille", pt: "Adicionar endereço da carteira" },
+  "XRPL Testnet preflight passed": { sw: "Ukaguzi wa awali wa XRPL Testnet umefaulu", ha: "Binciken farko na XRPL Testnet ya yi nasara", yo: "Àyẹ̀wò ìbẹ̀rẹ̀ XRPL Testnet ṣe àṣeyọrí", fr: "Vérifications préalables XRPL Testnet réussies", pt: "Verificações prévias do XRPL Testnet aprovadas" },
+  "x402 Oracle check passed · XRPL preflight passed": { sw: "Ukaguzi wa x402 na XRPL Testnet umefaulu", ha: "Dubawar x402 da XRPL Testnet ta yi nasara", yo: "Àyẹ̀wò x402 àti XRPL ṣàṣeyọrí", fr: "Vérification x402 et contrôles XRPL réussis", pt: "Verificação x402 e controlos XRPL aprovados" },
+  "I checked the supplier, method and amount, and approve this Testnet payment.": { sw: "Nimehakiki msambazaji, njia na kiasi, na ninaidhinisha malipo haya ya Testnet.", ha: "Na duba mai kaya, hanya da adadin kuɗi, kuma na amince da wannan biyan Testnet.", yo: "Mo ti ṣàyẹ̀wò olùpèsè, ọ̀nà àti iye owó; mo sì fọwọ́ sí ìsanwó Testnet yìí.", fr: "J’ai vérifié le fournisseur, le mode et le montant, et j’approuve ce paiement Testnet.", pt: "Verifiquei o fornecedor, o método e o montante e aprovo este pagamento Testnet." },
+  "I checked the supplier and amount, and approve this demo payment.": { sw: "Nimehakiki msambazaji na kiasi, na ninaidhinisha malipo haya ya majaribio.", ha: "Na duba mai kaya da adadin kuɗi, kuma na amince da wannan biyan gwaji.", yo: "Mo ti ṣàyẹ̀wò olùpèsè àti iye owó, mo sì fọwọ́ sí ìsanwó àdánwò yìí.", fr: "J’ai vérifié le fournisseur et le montant, et j’approuve ce paiement de démonstration.", pt: "Verifiquei o fornecedor e o montante e aprovo este pagamento de demonstração." },
 });
 const originalTextNodes = new WeakMap();
 const originalAttributes = new WeakMap();
@@ -670,6 +676,7 @@ function openPaymentModal(supplierName) {
     const supplierRecord = state.suppliers.find((s) => s.name === supplier);
     if (!walletInfo.simulated && !supplierRecord?.xrplAddress) { $("#modal-error").innerHTML = `Add the supplier’s public XRPL Testnet address before paying. <button type="button" class="text-link" id="payment-edit-supplier">Add wallet address</button>`; return; }
     if (route === "x402" && !/^https:\/\//i.test(x402Endpoint)) { $("#modal-error").textContent = "Add the supplier’s public HTTPS x402 URL in Edit details, or choose wallet transfer."; return; }
+    if (route === "x402" && !apiOnline) { $("#modal-error").textContent = "The x402 Oracle check needs the local app service. Start the service, reconnect, and try again; no payment was made."; return; }
     if (apiOnline && walletInfo.connected && !walletInfo.simulated) {
       const review = $("#payment-review", root); const button = $("#modal-submit"); button.disabled = true; button.textContent = "Checking Testnet…";
       try {
@@ -705,7 +712,15 @@ function openPaymentModal(supplierName) {
     }
     if (!walletInfo.simulated) { $("#modal-error").textContent = "Supplier payments require a connected XRPL Testnet wallet. Open the Testnet wallet control, create or reconnect it, then try again."; return; }
     const review = $("#payment-review", root); const button = $("#modal-submit");
-    if (!review.dataset.ready) { review.innerHTML = `<div class="policy-result"><strong>${route === "x402" ? "Demo x402 Oracle check" : "Demo wallet transfer"}</strong><p>${route === "x402" ? "The preview cannot contact an x402 service unless the local Testnet service is running. This simulated payment will not use or validate the x402 quote." : "This is a simulated payment only. No XRPL transfer will be sent."}</p><p>Recipient: ${escapeHTML(supplierRecord?.xrplAddress || supplier)} · Amount: ${amount.toFixed(6)} XRP</p><label class="form-hint"><input id="payment-owner-confirm" type="checkbox" /> I checked the supplier and amount, and approve this demo payment.</label></div>`; review.dataset.ready = "true"; review.dataset.amount = String(amount); review.dataset.supplier = supplier; review.dataset.route = route; review.dataset.endpoint = x402Endpoint; button.textContent = "Confirm demo payment"; return; }
+    if (!review.dataset.ready) {
+      let oracleQuote = null;
+      if (route === "x402") {
+        const oracle = await apiRequest("/x402/oracle-check", { method: "POST", body: JSON.stringify({ url: x402Endpoint }) });
+        oracleQuote = oracle.payment || {};
+        if (!oracle.ok || oracleQuote.pay_to !== supplierRecord?.xrplAddress || oracleQuote.amount_drops !== String(Math.round(amount * 1_000_000))) { $("#modal-error").textContent = "The x402 check did not pass or its recipient and amount do not match. No payment was made."; return; }
+      }
+      review.innerHTML = `<div class="policy-result ${route === "x402" ? "allowed" : ""}"><strong>${route === "x402" ? "x402 Oracle check passed · demo only" : "Demo wallet transfer"}</strong><p>${route === "x402" ? "The unpaid challenge matches this supplier and amount. This is still a demo payment; no XRPL transfer or x402 facilitator settlement will occur." : "This is a simulated payment only. No XRPL transfer will be sent."}</p><p>Recipient: ${escapeHTML(supplierRecord?.xrplAddress || supplier)} · Amount: ${amount.toFixed(6)} XRP</p>${oracleQuote ? `<p>x402 quote: ${escapeHTML(oracleQuote.amount_drops)} drops · ${escapeHTML(oracleQuote.network)}</p>` : ""}<label class="form-hint"><input id="payment-owner-confirm" type="checkbox" /> I checked the supplier and amount, and approve this demo payment.</label></div>`; review.dataset.ready = "true"; review.dataset.amount = String(amount); review.dataset.supplier = supplier; review.dataset.route = route; review.dataset.endpoint = x402Endpoint; button.textContent = "Confirm demo payment"; return;
+    }
     if (review.dataset.amount !== String(amount) || review.dataset.supplier !== supplier || review.dataset.route !== route || review.dataset.endpoint !== x402Endpoint) { delete review.dataset.ready; $("#modal-error").textContent = "The payment details changed. Check them again before approving."; button.textContent = "Check payment"; return; }
     if (!$("#payment-owner-confirm", root)?.checked) { $("#modal-error").textContent = "Tick the owner approval box after checking the recipient and amount."; return; }
     const timestamp = new Date().toISOString();
