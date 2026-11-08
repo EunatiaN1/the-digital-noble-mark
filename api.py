@@ -8,9 +8,9 @@ import re
 import base64
 import ipaddress
 import socket
-from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -28,7 +28,7 @@ from intent import make_intent
 from policy import evaluate_spend, pending_spend_xrp
 from preflight import PreflightError
 from reconcile import sweep
-from xrpl_agent import create_and_fund_wallet, get_wallet, prepare_payment, sign_persist_submit, submit_x402_payment, wallet_activity, wallet_status
+from xrpl_agent import create_and_fund_wallet, get_wallet, prepare_payment, sign_persist_submit, submit_x402_payment, wallet_activity, wallet_status, xrpl_node_status
 
 log = logging.getLogger("spaza.api")
 app = FastAPI(title="The Digital Mark Spaza Shop", version="2.0.0")
@@ -182,6 +182,16 @@ def health() -> dict:
     }
 
 
+@app.get("/api/xrpl/node-status", dependencies=[Depends(require_api_key)])
+def xrpl_network_node_status() -> dict:
+    """Report the Testnet RPC node's ledger state; it is not this app's validator."""
+    require_live_mode()
+    try:
+        return xrpl_node_status()
+    except Exception as exc:
+        raise HTTPException(502, f"XRPL Testnet node status could not be read: {exc}") from exc
+
+
 @app.get("/api/wallet/activity")
 def wallet_activity_feed() -> dict:
     """Refresh pending outcomes and return recent validated Testnet wallet payments."""
@@ -323,7 +333,7 @@ def _x402_requirements(response: httpx.Response, payload: bytes) -> dict | None:
 
 @app.post("/api/x402/oracle-check", dependencies=[Depends(require_api_key)])
 def x402_oracle_check(body: X402OracleRequest) -> dict:
-    """Unpaid HTTPS probe: inspect a public endpoint for an XRPL Testnet x402 challenge."""
+    """Unpaid HTTPS probe: inspect a public endpoint for a usable XRPL Testnet x402 challenge."""
     host, url = _public_https_url(body.url.strip())
     try:
         with httpx.Client(timeout=httpx.Timeout(8.0), follow_redirects=False, headers={"Accept": "application/json"}) as client:
@@ -354,7 +364,8 @@ def x402_oracle_check(body: X402OracleRequest) -> dict:
         return {"ok": False, "verdict": "x402 found · no XRPL Testnet XRP option", "endpoint": host,
                 "http_status": status, "checks": ["HTTP 402 challenge found", "No payment was sent"],
                 "message": "The endpoint advertises x402, but not exact XRP on XRPL Testnet (xrpl:1)."}
-    amount, pay_to = xrpl.get("amount"), xrpl.get("payTo")
+    amount = xrpl.get("amount")
+    pay_to = xrpl.get("payTo")
     valid_amount = isinstance(amount, str) and amount.isdigit() and int(amount) > 0
     valid_address = isinstance(pay_to, str) and bool(re.fullmatch(r"r[1-9A-HJ-NP-Za-km-z]{24,34}", pay_to))
     ok = valid_amount and valid_address
@@ -903,6 +914,14 @@ def index_page() -> HTMLResponse:
     if "</head>" in source:
         source = source.replace("</head>", key_script + "</head>", 1)
     return HTMLResponse(source)
+
+
+@app.get("/preview.html", response_class=HTMLResponse)
+def interactive_preview_page() -> HTMLResponse:
+    preview = ROOT / "preview.html"
+    if not preview.is_file():
+        raise HTTPException(404, "Preview page not found.")
+    return HTMLResponse(preview.read_text(encoding="utf-8"))
 
 
 @app.get("/{asset_name}")
