@@ -23,7 +23,7 @@ Run `./start_app.sh`, then download and open the [interactive HTML preview](./pr
 3. The app generates the wallet locally, stores its secret in the private `.env` file, and asks the official XRPL Testnet faucet for test XRP.
 4. Copy the public address shown in the wallet panel. Use this wallet only on Testnet; it cannot receive or send Mainnet funds.
 
-Supplier payments require a connected Testnet wallet and the supplier's public Testnet destination. Add an address under **Edit details**, or link a supplier email to its public address once and select that email. Review the ledger and policy checks, then approve each transfer. Never enter a seed or secret into a supplier address field.
+Supplier payments require a connected Testnet wallet and the supplier's public Testnet destination. Add an address under **Edit details**, or link a supplier email to its public address once and select that email. The **Pay supplier** action is available on every supplier card; if the address is missing, it opens a direct action to add it. Choose a wallet transfer or the optional x402 route, review the destination, amount and checks, then tick the owner approval box before sending. Never enter a seed or secret into a supplier address field.
 
 ## Payments and withdrawals
 
@@ -35,7 +35,7 @@ Supplier payments require a connected Testnet wallet and the supplier's public T
 
 Card sample data and profit allocations are simulations. Incoming and outgoing XRP payments are read from validated XRPL Testnet account history and refresh about every 5 seconds while the app is open. A Testnet deposit request is marked validated when the requested amount arrives at the shop address and, if entered, from the expected sender address. A request alone does not create a deposit: send XRP to the shop wallet from a different Testnet wallet. Testnet balances and transfers are not real money.
 
-The wallet panel also includes an **x402 endpoint check**. It probes a public HTTPS URL without paying and checks whether its HTTP 402 challenge offers exact XRP on XRPL Testnet (`xrpl:1`). A passing challenge-format check does not verify the service operator or guarantee the service is safe; review every payment independently.
+The supplier editor can save both a public wallet address and an optional **x402 service URL**. On the x402 route, the app checks the URL's HTTP 402 challenge without paying, requires its exact XRP amount and recipient to match the entered payment and saved supplier address, then runs the normal XRPL Testnet preflight and owner confirmation. The app finally submits a standard XRPL Testnet transfer to that address; it does not complete x402 facilitator settlement or retry the service request with an x402 payment proof. A passing challenge-format check does not verify the service operator or guarantee the service is safe; review every payment independently.
 
 ## Shop analytics and inventory
 
