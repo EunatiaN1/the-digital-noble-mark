@@ -221,6 +221,100 @@ def sign_persist_submit(filled: Payment, intent: Intent, supplier: str, amount_x
     return stored
 
 
+def submit_x402_payment(endpoint: str, destination: str, amount_xrp: float) -> dict:
+    """Complete one approved x402 resource purchase on XRPL Testnet.
+
+    The x402 client handles the 402 challenge, signs the exact Payment, obtains
+    the facilitator receipt, and retries the resource request. We independently
+    verify the receipt's transaction against validated XRPL data before calling
+    the purchase successful.
+    """
+    from x402_xrpl.clients.requests import x402_requests
+    from x402_xrpl.clients.base import decode_payment_response
+
+    wallet = get_wallet()
+    fee_limit_drops = max(1, int(round(settings.max_fee_xrp * 1_000_000)))
+    session = x402_requests(
+        wallet,
+        rpc_url=settings.endpoint,
+        network_filter="xrpl:1",
+        scheme_filter="exact",
+        max_fee_drops=fee_limit_drops,
+    )
+    expected_drops = str(xrp_to_drops(amount_xrp))
+    try:
+        response = session.get(endpoint, timeout=90)
+    except Exception as exc:
+        # x402 may have submitted before a network interruption; never retry blindly.
+        return {"status": "settlement_unknown", "validated": False, "network": "testnet",
+                "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "message": f"The x402 request was interrupted. Check the wallet activity before trying again. ({type(exc).__name__})"}
+
+    receipt_header = response.headers.get("PAYMENT-RESPONSE")
+    if not receipt_header:
+        return {"status": "failed", "validated": False, "network": "testnet",
+                "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "resource_status": response.status_code,
+                "message": "The service did not return an x402 settlement receipt. No completed payment was confirmed."}
+    try:
+        receipt = decode_payment_response(receipt_header)
+    except Exception as exc:
+        return {"status": "settlement_unknown", "validated": False, "network": "testnet",
+                "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "resource_status": response.status_code,
+                "message": f"The service response could not be verified. Check wallet activity before retrying. ({type(exc).__name__})"}
+
+    tx_hash = receipt.get("transaction") if isinstance(receipt, dict) else None
+    if not isinstance(receipt, dict) or receipt.get("success") is not True or receipt.get("network") != "xrpl:1":
+        return {"status": "failed", "validated": False, "network": "testnet", "tx_hash": tx_hash,
+                "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "resource_status": response.status_code,
+                "message": "The x402 facilitator did not confirm a successful XRPL Testnet settlement."}
+    if not isinstance(tx_hash, str) or not re.fullmatch(r"[A-Fa-f0-9]{64}", tx_hash):
+        return {"status": "settlement_unknown", "validated": False, "network": "testnet",
+                "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "resource_status": response.status_code,
+                "message": "The x402 receipt did not include a usable transaction hash. Check wallet activity before retrying."}
+
+    deadline = time.monotonic() + 20
+    transaction = None
+    while time.monotonic() < deadline:
+        transaction = fetch_tx(tx_hash)
+        if transaction and transaction.get("validated"):
+            break
+        time.sleep(1)
+    if not transaction or not transaction.get("validated"):
+        return {"status": "submitted_not_validated", "validated": False, "network": "testnet",
+                "tx_hash": tx_hash, "destination": destination, "amount_xrp": round(amount_xrp, 6),
+                "last_ledger_sequence": ((transaction.get("tx_json") or transaction.get("tx") or transaction).get("LastLedgerSequence") if transaction else None),
+                "resource_status": response.status_code,
+                "message": "The x402 facilitator returned a receipt; XRPL validation is still pending. This payment is saved for reconciliation. Do not retry it."}
+
+    tx = transaction.get("tx_json") or transaction.get("tx") or transaction
+    meta = transaction.get("meta") or transaction.get("metaData") or {}
+    engine_result = meta.get("TransactionResult")
+    delivered = tx.get("Amount", tx.get("DeliverMax"))
+    matches = (
+        tx.get("TransactionType") == "Payment"
+        and tx.get("Account") == wallet.address
+        and tx.get("Destination") == destination
+        and isinstance(delivered, str)
+        and delivered == expected_drops
+    )
+    if engine_result != "tesSUCCESS" or not matches:
+        return {"status": "failed", "validated": True, "network": "testnet", "tx_hash": tx_hash,
+                "destination": tx.get("Destination", destination), "amount_xrp": round(amount_xrp, 6),
+                "engine_result": engine_result, "ledger_index": transaction.get("ledger_index"),
+                "unexpected_payment": not matches, "resource_status": response.status_code,
+                "message": "XRPL validated this x402 transaction, but its result did not match the approved supplier payment. Review wallet activity before taking another action."}
+
+    return {"status": "validated", "validated": True, "network": "testnet", "tx_hash": tx_hash,
+            "destination": destination, "amount_xrp": round(amount_xrp, 6),
+            "engine_result": engine_result, "ledger_index": transaction.get("ledger_index"),
+            "resource_status": response.status_code, "x402_settled": True,
+            "message": "x402 payment settled by the facilitator and validated on XRPL Testnet."}
+
+
 def _save_result(tx_hash: str, intent_id: str, status: str, engine_result: str | None,
                  ledger_index: int | None, payload: dict) -> None:
     now = now_iso()
