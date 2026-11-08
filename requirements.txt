@@ -1,4 +1,6 @@
 xrpl-py>=4.0,<5
+x402-xrpl>=0.3.4,<0.4
+requests>=2.32,<3
 fastapi>=0.115,<1
 uvicorn>=0.34,<1
 python-dotenv>=1.0,<2
