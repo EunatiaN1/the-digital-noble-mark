@@ -9,12 +9,13 @@ from xrpl_agent import current_ledger, fetch_tx
 
 def sweep() -> list[dict]:
     with connection() as db:
-        rows = db.execute("SELECT * FROM payment_intents WHERE status IN ('pending','submitted_not_validated','not_found') ORDER BY created_at").fetchall()
+        rows = db.execute("SELECT * FROM payment_intents WHERE status IN ('pending','submitted_not_validated','not_found') OR (status='settlement_unknown' AND tx_hash IS NOT NULL) ORDER BY created_at").fetchall()
     if not rows:
         return []
     ledger = current_ledger()
     results = []
     for row in rows:
+        payload = json.loads(row["payload"])
         tx = fetch_tx(row["tx_hash"])
         if tx is None:
             if row["last_ledger_sequence"] is not None and ledger > row["last_ledger_sequence"]:
@@ -26,7 +27,24 @@ def sweep() -> list[dict]:
             validated = bool(tx.get("validated"))
             engine = (tx.get("meta") or {}).get("TransactionResult")
             status = "submitted_not_validated" if not validated else "validated" if engine == "tesSUCCESS" else "failed"
-        payload = json.loads(row["payload"])
+            if validated and payload.get("workflow") == "x402_supplier_payment" and engine == "tesSUCCESS":
+                tx_json = tx.get("tx_json") or tx.get("tx") or tx
+                amount = tx_json.get("Amount", tx_json.get("DeliverMax"))
+                try:
+                    from xrpl_agent import get_wallet
+                    expected_account = get_wallet().address
+                except Exception:
+                    expected_account = None
+                from xrpl.utils import xrp_to_drops
+                expected_drops = str(xrp_to_drops(float(row["amount_xrp"])))
+                matches = (tx_json.get("TransactionType") == "Payment"
+                           and tx_json.get("Account") == expected_account
+                           and tx_json.get("Destination") == row["destination"]
+                           and isinstance(amount, str) and amount == expected_drops)
+                if not matches:
+                    status = "failed"
+                    payload["unexpected_payment"] = True
+                    payload["message"] = "Validated hash did not match the approved x402 supplier payment; review wallet activity."
         payload.update({"status": status, "validated": status == "validated", "engine_result": engine})
         if tx:
             payload["ledger_index"] = tx.get("ledger_index")
